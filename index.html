@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DNA や ILYAS | Fortnite Item Shop</title>
+
+<style>
+  /* تحسينات عامة للتنسيق */
+  *{ box-sizing: border-box; } 
+  
+  body{
+    margin:0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background:#f0f5fa;
+    color: #333;
+  }
+  header{
+    background:#8ec6ff;
+    padding:30px 20px;
+    text-align:center;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  }
+  .logo{
+    background:linear-gradient(135deg,#3498db,#6ecbff);
+    padding:15px 40px;
+    border-radius:50px;
+    color:#fff;
+    font-size:30px;
+    font-weight: bold;
+    display:inline-block;
+  }
+  .container{
+    max-width:1100px;
+    margin:auto;
+    padding:20px
+  }
+  h2 { text-align: center; margin-bottom: 30px; color: #2c3e50; }
+  
+  .shop{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(200px,1fr));
+    gap:20px
+  }
+  .card{
+    background:#fff;
+    border-radius:14px;
+    padding:15px;
+    text-align:center;
+    cursor:pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    box-shadow:0 4px 10px rgba(0,0,0,.05);
+    border: 1px solid #eee;
+  }
+  .card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 6px 15px rgba(0,0,0,0.1);
+  }
+  .card img{
+    width:100%;
+    height: auto;
+    border-radius:10px;
+    background: #f9f9f9;
+  }
+  .card h4 { margin: 10px 0; font-size: 16px; }
+  .price{
+    color:#27ae60;
+    font-weight:bold;
+    font-size: 1.1em;
+  }
+  
+  /* تنسيق قسم الطلب */
+  .order{
+    display:none;
+    background:#fff;
+    margin-top:40px;
+    padding:25px;
+    border-radius:14px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    border: 2px solid #3498db;
+    max-width: 500px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .order input{
+    width:100%;
+    padding:12px;
+    margin-top:15px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 16px;
+  }
+  .order button{
+    width:100%;
+    padding:12px;
+    margin-top:15px;
+    background:#25d366; /* لون واتساب */
+    color:#fff;
+    border:none;
+    border-radius:8px;
+    cursor:pointer;
+    font-size: 18px;
+    font-weight: bold;
+  }
+  .order button:hover { background: #128c7e; }
+
+  footer{
+    text-align:center;
+    padding:40px 20px;
+    color:#777;
+    font-size: 14px;
+  }
+</style>
+</head>
+
+<body>
+
+<header>
+  <div class="logo">DNA や ILYAS</div>
+</header>
+
+<div class="container">
+  <h2>🛒 متجر Fortnite اليومي</h2>
+  <div class="shop" id="shop"></div>
+
+  <div class="order" id="orderBox">
+    <h3 id="skinName" style="margin-top:0"></h3>
+    <img id="skinImg" alt="Fortnite Item" style="width:150px; display:block; margin:auto; border-radius:10px">
+    <p id="skinPrice" style="text-align:center; font-size:20px; color:#27ae60; font-weight:bold"></p>
+    <input type="text" id="username" placeholder="اكتب اسم حسابك في Fortnite">
+    <button onclick="sendOrder()">✅ إتمام الطلب عبر واتساب</button>
+  </div>
+</div>
+
+<footer>
+  © 2026 — موقع مستقل لإدارة طلبات الهدايا. جميع الحقوق محفوظة لشركة Epic Games فيما يخص المحتوى المرئي.
+</footer>
+
+<script>
+// الرابط المباشر يعمل غالباً بدون بروكسي في المتصفحات الحديثة، لكن سنبقي على الهيكل
+const API_URL = "https://fortnite-api.com/v2/shop/br";
+
+let selected = null;
+
+async function loadShop(){
+  const shop = document.getElementById("shop");
+  shop.innerHTML = "<p style='grid-column: 1/-1; text-align:center;'>⏳ جاري جلب محتوى المتجر الآن...</p>";
+
+  try{
+    const res = await fetch(API_URL);
+    const json = await res.json();
+
+    if(json.status !== 200 || !json.data){
+      throw new Error("فشل في جلب البيانات");
+    }
+
+    shop.innerHTML = "";
+
+    // دمج العناصر من قسم featured و daily لعرض متجر كامل
+    const allItems = [...json.data.featured.entries, ...json.data.daily.entries];
+
+    allItems.forEach(entry => {
+      const item = entry.items[0];
+      // محاولة الحصول على أفضل صورة متاحة
+      const image = item.images.featured || item.images.icon || item.images.smallIcon;
+      
+      if(!image) return;
+
+      const card = document.createElement("div");
+      card.className = "card";
+      card.innerHTML = `
+        <img src="${image}" alt="${item.name}" loading="lazy">
+        <h4>${item.name}</h4>
+        <div class="price">${entry.finalPrice} V-Bucks</div>
+      `;
+
+      card.onclick = () => {
+        selectItem(item.name, entry.finalPrice, image);
+        // تمرير سلس لأسفل عند الاختيار
+        document.getElementById("orderBox").scrollIntoView({ behavior: 'smooth' });
+      };
+
+      shop.appendChild(card);
+    });
+
+  } catch(err){
+    console.error(err);
+    shop.innerHTML = "<p style='grid-column: 1/-1; text-align:center; color:red;'>❌ تعذر تحميل المتجر. يرجى المحاولة لاحقاً.</p>";
+  }
+}
+
+function selectItem(name, price, img){
+  selected = { name, price, img };
+  const orderBox = document.getElementById("orderBox");
+  orderBox.style.display = "block";
+  document.getElementById("skinName").textContent = "طلب: " + name;
+  document.getElementById("skinPrice").textContent = price + " V-Bucks";
+  document.getElementById("skinImg").src = img;
+}
+
+function sendOrder(){
+  const user = document.getElementById("username").value.trim();
+  if(!user){
+    alert("من فضلك أدخل اسم حسابك أولاً");
+    return;
+  }
+  if(!selected){
+    alert("يرجى اختيار عنصر من المتجر");
+    return;
+  }
+
+  const msg = `السلام عليكم، أريد طلب سكن من المتجر:
+- الاسم: ${selected.name}
+- السعر: ${selected.price} V-Bucks
+- حسابي: ${user}`;
+
+  const whatsappURL = `https://wa.me/212695067840?text=${encodeURIComponent(msg)}`;
+  window.open(whatsappURL, "_blank");
+}
+
+loadShop();
+</script>
+
+</body>
+  </html>
+  
